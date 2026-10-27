@@ -1,0 +1,6 @@
+run_uid,step,step_unit,scope,name,value,target_id,source
+00000000000000000000000000,,,run,n_states.kxinf_koinf,5478,classic.n_states,Classical tic-tac-toe count (citation pending)
+00000000000000000000000000,,,run,n_states_canon.kxinf_koinf,765,classic.n_states_canon,Classical tic-tac-toe count (citation pending)
+00000000000000000000000000,,,run,n_games.kxinf_koinf,255168,classic.n_games,Classical tic-tac-toe count (citation pending)
+00000000000000000000000000,,,run,value.kxinf_koinf,0,classic.value,Classical tic-tac-toe count (citation pending)
+00000000000000000000000000,,,run,naive_nodes.kxinf_koinf,549946,classic.naive_nodes,Classical tic-tac-toe count (citation pending)

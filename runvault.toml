@@ -1,0 +1,163 @@
+require_docs = true
+
+[[metric_patterns]]
+pattern = "value.{cond}"
+meaning = "Initial-state value from X's perspective: win, draw, or loss."
+direction = "none"
+[metric_patterns.axes]
+cond = "Caps of X and O, for example kx3_ko3."
+
+[[metric_patterns]]
+pattern = "plies.{cond}"
+meaning = "Number of plies to the solved result; omitted for a draw."
+unit = "count"
+direction = "none"
+[metric_patterns.axes]
+cond = "Caps of X and O, for example kx3_ko3."
+
+[[metric_patterns]]
+pattern = "n_states.{cond}"
+meaning = "Number of reachable states including the initial and terminal states."
+unit = "count"
+direction = "none"
+[metric_patterns.axes]
+cond = "Caps of X and O, for example kx3_ko3."
+
+[[metric_patterns]]
+pattern = "n_states_canon.{cond}"
+meaning = "Number of reachable states after D4 canonicalization."
+unit = "count"
+direction = "none"
+[metric_patterns.axes]
+cond = "Caps of X and O, for example kx3_ko3."
+
+[[metric_patterns]]
+pattern = "n_win.{cond}"
+meaning = "Number of reachable states won by the player to move."
+unit = "count"
+direction = "none"
+[metric_patterns.axes]
+cond = "Caps of X and O, for example kx3_ko3."
+
+[[metric_patterns]]
+pattern = "n_draw.{cond}"
+meaning = "Number of reachable states drawn for the player to move."
+unit = "count"
+direction = "none"
+[metric_patterns.axes]
+cond = "Caps of X and O, for example kx3_ko3."
+
+[[metric_patterns]]
+pattern = "n_lose.{cond}"
+meaning = "Number of reachable states lost by the player to move."
+unit = "count"
+direction = "none"
+[metric_patterns.axes]
+cond = "Caps of X and O, for example kx3_ko3."
+
+[[metric_patterns]]
+pattern = "n_games.{cond}"
+meaning = "Number of paths from the initial state to a terminal state; omitted for cyclic graphs."
+unit = "count"
+direction = "none"
+[metric_patterns.axes]
+cond = "Caps of X and O, for example kx3_ko3."
+
+[[metric_patterns]]
+pattern = "n_best_move_classes.{cond}"
+meaning = "Number of root best-move orbits under the root stabilizer."
+unit = "count"
+direction = "none"
+[metric_patterns.axes]
+cond = "Caps of X and O, for example kx3_ko3."
+
+[[metric_patterns]]
+pattern = "naive_nodes.{cond}"
+meaning = "Number of nodes visited by completed naive negamax search."
+unit = "count"
+direction = "none"
+[metric_patterns.axes]
+cond = "Caps of X and O, for example kx3_ko3."
+
+[[metric_patterns]]
+pattern = "naive_capped.{cond}"
+meaning = "Whether naive negamax reached its node cap."
+direction = "none"
+[metric_patterns.axes]
+cond = "Caps of X and O, for example kx3_ko3."
+
+[metrics."naive_judged"]
+meaning = "Number of cap pairs for which naive negamax completed and was checked."
+unit = "count"
+direction = "none"
+scope = ["run"]
+
+[metrics."naive_unjudged"]
+meaning = "Number of cap pairs for which naive negamax did not complete."
+unit = "count"
+direction = "none"
+scope = ["run"]
+
+[[metric_patterns]]
+pattern = "play_win.{cond}"
+meaning = "Games won from the designated optimal-policy side's perspective."
+unit = "count"
+direction = "none"
+[metric_patterns.axes]
+cond = "Caps of X and O, for example kx3_ko3."
+
+[[metric_patterns]]
+pattern = "play_draw.{cond}"
+meaning = "Games drawn from the designated optimal-policy side's perspective."
+unit = "count"
+direction = "none"
+[metric_patterns.axes]
+cond = "Caps of X and O, for example kx3_ko3."
+
+[[metric_patterns]]
+pattern = "play_lose.{cond}"
+meaning = "Games lost from the designated optimal-policy side's perspective."
+unit = "count"
+direction = "none"
+[metric_patterns.axes]
+cond = "Caps of X and O, for example kx3_ko3."
+
+[[metric_patterns]]
+pattern = "check.{id}"
+meaning = "Whether the named validation check passed."
+direction = "up"
+[metric_patterns.axes]
+id = "Validation identifier, for example v1."
+
+[metrics."checks_failed"]
+meaning = "Number of failed validation checks."
+unit = "count"
+direction = "down"
+scope = ["run"]
+
+[parameters."/rule"]
+meaning = "Move-order rule."
+
+[parameters."/first"]
+meaning = "Player that moves first."
+
+[parameters."/horizon"]
+meaning = "Value-iteration horizon, or null for the unbounded solver."
+unit = "count"
+
+[parameters."/k_values"]
+meaning = "Ordered move-cap values included in the run."
+
+[parameters."/node_cap"]
+meaning = "Maximum number of nodes visited by naive search."
+unit = "count"
+
+[parameters."/n_games"]
+meaning = "Number of games played for each cap pair."
+unit = "count"
+
+[parameters."/policies"]
+meaning = "Policies assigned to X and O."
+
+[parameters."/seed"]
+meaning = "Master seed for stochastic play."
