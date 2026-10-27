@@ -1,53 +1,64 @@
-"""fifo-ttt-tools — 統合 CLI ディスパッチャ．
-
-Usage:
-    fifo-ttt-tools visualize [...]
-    fifo-ttt-tools visualize-sweep [...]
-    fifo-ttt-tools show-experiment-settings [...]
-"""
+"""Command-line interface for FIFO tic-tac-toe analysis tools."""
 from __future__ import annotations
 
 import argparse
-import sys
+from pathlib import Path
+
+from fifo_ttt_tools.load import load_naive_runs, load_solve_runs
+from fifo_ttt_tools.plot import plot_lines, plot_table
+from fifo_ttt_tools.table import write_tables
 
 
-def main(argv: list[str] | None = None) -> None:
-    parser = argparse.ArgumentParser(
-        prog="fifo-ttt-tools",
-        description="Visualization & analysis tools",
-    )
-    subparsers = parser.add_subparsers(dest="command", required=True)
-    subparsers.add_parser("visualize", help="単一実行結果の可視化", add_help=False)
-    subparsers.add_parser(
-        "visualize-sweep",
-        help="スイープ結果の可視化 (パラメータ依存図 + 組み合わせ別グリッドアニメーション)",
-        add_help=False,
-    )
-    subparsers.add_parser(
-        "show-experiment-settings",
-        help="実行結果ディレクトリの設定値を表示 (config.json / sweep_config.json)",
-        add_help=False,
-    )
+def _common_run_arguments(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument("--run-dir", action="append", type=Path, help="Solve run directory; may be repeated")
+    parser.add_argument("--scratch", action="store_true", help="Resolve scratch runs instead of production runs")
 
-    argv = sys.argv[1:] if argv is None else argv
-    if not argv or argv[0] in {"-h", "--help"}:
-        parser.parse_args(argv)
-        return
 
-    command = argv[0]
-    rest = argv[1:]
-    if command == "visualize":
-        from fifo_ttt_tools.visualize import main as run_main
-        run_main(rest)
-    elif command == "visualize-sweep":
-        from fifo_ttt_tools.visualize_sweep import main as run_main
-        run_main(rest)
-    elif command == "show-experiment-settings":
-        from fifo_ttt_tools.show_experiment_settings import main as run_main
-        run_main(rest)
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(prog="fifo-ttt-tools", description="FIFO tic-tac-toe analysis tools")
+    commands = parser.add_subparsers(dest="command", required=True)
+
+    plot_parser = commands.add_parser("plot", help="Generate both preregistered figure alternatives")
+    _common_run_arguments(plot_parser)
+    plot_parser.add_argument("--rule", choices=["t1", "t2", "t3"], default="t3", help="Main rule; all rules remain visible for comparison")
+
+    table_parser = commands.add_parser("table", help="Generate Markdown and CSV result tables")
+    _common_run_arguments(table_parser)
+    table_parser.add_argument("--naive-run-dir", action="append", type=Path, help="Naive run directory; may be repeated")
+    table_parser.add_argument("--naive", action="store_true", help="Include the naive-node comparison table")
+
+    settings_parser = commands.add_parser("show-experiment-settings", help="Display a runvault config envelope")
+    settings_parser.add_argument("--results-dir", required=True)
+    settings_parser.add_argument("--json", action="store_true")
+    return parser
+
+
+def main(argv: list[str] | None = None) -> int:
+    args = build_parser().parse_args(argv)
+    if args.command == "show-experiment-settings":
+        from fifo_ttt_tools.show_experiment_settings import main as settings_main
+
+        forwarded = ["--results-dir", args.results_dir]
+        if args.json:
+            forwarded.append("--json")
+        return settings_main(forwarded)
+
+    frame = load_solve_runs(first=None, run_dirs=args.run_dir, scratch=args.scratch, all_horizons=True)
+    anchor = Path(frame.iloc[-1]["run_dir"])
+    if args.command == "plot":
+        if args.rule not in set(frame["rule"]):
+            raise ValueError(f"No solve run was loaded for main rule {args.rule}")
+        outputs = [*plot_lines(frame, anchor, args.rule), *plot_table(frame, anchor, args.rule)]
     else:
-        parser.parse_args(argv)  # 不正なサブコマンドはここでエラーになる
+        naive = None
+        if args.naive or args.naive_run_dir:
+            node_cap = None if args.naive_run_dir else 1_000_000_000
+            naive = load_naive_runs(run_dirs=args.naive_run_dir, scratch=args.scratch, node_cap=node_cap)
+        outputs = write_tables(frame, anchor, naive=naive)
+    for output in outputs:
+        print(output)
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

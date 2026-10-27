@@ -95,4 +95,40 @@ impl Condition {
             Player::O => self.ko,
         }
     }
+
+    pub const fn with_horizon(mut self, horizon: Option<u32>) -> Self {
+        self.horizon = horizon;
+        self
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct SolveSpec {
+    pub rule: Rule,
+    pub first: Player,
+    pub horizon: Option<u32>,
+}
+
+pub fn sweep_specs() -> Vec<SolveSpec> {
+    let mut specs = Vec::with_capacity(15);
+    for rule in [Rule::T1, Rule::T2, Rule::T3] {
+        specs.push(SolveSpec {
+            rule,
+            first: Player::X,
+            horizon: None,
+        });
+        for horizon in [20, 50, 100] {
+            specs.push(SolveSpec {
+                rule,
+                first: Player::X,
+                horizon: Some(horizon),
+            });
+        }
+        specs.push(SolveSpec {
+            rule,
+            first: Player::O,
+            horizon: None,
+        });
+    }
+    specs
 }

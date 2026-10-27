@@ -9,6 +9,9 @@ dependencies = [
     "pandas>=2.2",
 ]
 
+[dependency-groups]
+dev = ["pytest>=8.0"]
+
 [project.scripts]
 fifo-ttt-tools = "fifo_ttt_tools.cli:main"
 

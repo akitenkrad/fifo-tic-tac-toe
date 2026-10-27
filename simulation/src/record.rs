@@ -5,7 +5,7 @@ use std::fs;
 use std::path::PathBuf;
 use std::rc::Rc;
 
-use runvault::{Run, RunOptions};
+use runvault::{Lineage, Run, RunOptions};
 use runvault_socsim::{RunHandle, RunvaultRecorder};
 use serde_json::Value;
 use socsim_core::Recorder;
@@ -42,12 +42,53 @@ impl Recorder for SharedRecorder {
 }
 
 pub fn start_run(subcommand: &str, parameters: &Value, label: &str, scratch: bool) -> RecordResult<(RunvaultRecorder, RunHandle)> {
-    let options = RunOptions::new("fifo-ttt", subcommand)
+    start_run_from_options(
+        RunOptions::new("fifo-ttt", subcommand)
+            .repo_id("fifo-tic-tac-toe")
+            .domain("analysis")
+            .scratch(scratch)
+            .parameters(parameters)?
+            .label(label),
+    )
+}
+
+pub fn start_sweep_child(
+    parameters: &Value,
+    label: &str,
+    scratch: bool,
+    sweep_id: &str,
+    parent_run_uid: &str,
+    index: usize,
+    total: usize,
+) -> RecordResult<(RunvaultRecorder, RunHandle)> {
+    let options = RunOptions::new("fifo-ttt", "solve")
         .repo_id("fifo-tic-tac-toe")
         .domain("analysis")
         .scratch(scratch)
         .parameters(parameters)?
-        .label(label);
+        .label(label)
+        .lineage(Lineage {
+            sweep_id: Some(sweep_id.to_owned()),
+            parent_run_uid: Some(parent_run_uid.to_owned()),
+            ..Lineage::default()
+        })
+        .sweep_point(index as u64, total as u64);
+    start_run_from_options(options)
+}
+
+pub fn start_play_run(parameters: &Value, label: &str, scratch: bool, seed: u64) -> RecordResult<(RunvaultRecorder, RunHandle)> {
+    let options = RunOptions::new("fifo-ttt", "play")
+        .repo_id("fifo-tic-tac-toe")
+        .domain("simulation")
+        .scratch(scratch)
+        .parameters(parameters)?
+        .label(label)
+        .seed_pointers(["/seed"])
+        .master_seed(seed);
+    start_run_from_options(options)
+}
+
+fn start_run_from_options(options: RunOptions) -> RecordResult<(RunvaultRecorder, RunHandle)> {
     let run = Run::start(options)?;
     let recorder = RunvaultRecorder::new(run).step_unit("ply").scope("run");
     let handle = recorder.handle();

@@ -4,6 +4,7 @@ pub mod config;
 pub mod graph;
 pub mod iterate;
 pub mod mechanisms;
+pub mod naive;
 pub mod policy;
 pub mod record;
 pub mod retro;

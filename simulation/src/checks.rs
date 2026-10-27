@@ -6,6 +6,7 @@ use socsim_core::NullRecorder;
 use crate::config::{Cap, Condition, Player, Rule};
 use crate::graph::{Graph, Terminal};
 use crate::iterate::value_iteration;
+use crate::naive::NaiveResult;
 use crate::policy::OptimalPolicy;
 use crate::retro::{retrograde, Solution};
 use crate::rules::Outcome;
@@ -427,6 +428,116 @@ pub fn check_v7(cond: &Condition, graph: &Graph, solution: &Solution) -> CheckRe
         return CheckResult::fail("v7", "optimal draw reached the safety cap instead of a repeat or terminal draw");
     }
     CheckResult::pass("v7", format!("optimal socsim game ended in {} plies by {:?}", game.plies, game.reason))
+}
+
+pub fn check_v8(graph: &Graph, unbounded: &Solution, bounded: &Solution, horizon: u32) -> CheckResult {
+    if let Err(result) = validate_solution_shape(graph, unbounded) {
+        return with_id(result, "v8");
+    }
+    if let Err(result) = validate_solution_shape(graph, bounded) {
+        return with_id(result, "v8");
+    }
+    for index in 0..graph.states.len() {
+        let decisive = unbounded.plies[index].is_some_and(|plies| plies <= horizon);
+        let expected_value = if decisive { unbounded.value[index] } else { 0 };
+        let expected_plies = if decisive { unbounded.plies[index] } else { None };
+        if bounded.value[index] != expected_value || bounded.plies[index] != expected_plies {
+            return CheckResult::fail(
+                "v8",
+                format!(
+                    "state {index} at horizon {horizon} is ({}, {:?}), expected ({expected_value}, {expected_plies:?})",
+                    bounded.value[index], bounded.plies[index]
+                ),
+            );
+        }
+    }
+    CheckResult::pass(
+        "v8",
+        format!(
+            "all {} states match the unbounded-distance criterion at horizon {horizon}",
+            graph.states.len()
+        ),
+    )
+}
+
+pub fn check_v9(rule: Rule, kx: Cap, ko: Cap) -> CheckResult {
+    let o_condition = Condition::new(rule, kx, ko, Player::O);
+    let x_condition = Condition::new(rule, ko, kx, Player::X);
+    let o_graph = Graph::enumerate(&o_condition);
+    let x_graph = Graph::enumerate(&x_condition);
+    let o_solution = retrograde(&o_graph);
+    let x_solution = retrograde(&x_graph);
+    let o_root = o_graph.root as usize;
+    let x_root = x_graph.root as usize;
+    if o_solution.value[o_root] != x_solution.value[x_root] || o_solution.plies[o_root] != x_solution.plies[x_root] {
+        return CheckResult::fail(
+            "v9",
+            format!(
+                "role-swapped roots differ: O-first to-move ({}, {:?}), X-first to-move ({}, {:?})",
+                o_solution.value[o_root], o_solution.plies[o_root], x_solution.value[x_root], x_solution.plies[x_root]
+            ),
+        );
+    }
+    CheckResult::pass("v9", "O-first X-perspective value is the negated role-swapped X-first value")
+}
+
+pub fn check_v10(cond: &Condition, result: NaiveResult, expected_value: i8) -> CheckResult {
+    if result.capped {
+        return CheckResult::pass("v10", "node cap reached; this condition is unjudged");
+    }
+    let Some(actual_value) = result.value else {
+        return CheckResult::fail("v10", "completed search did not return a value");
+    };
+    if actual_value != expected_value {
+        return CheckResult::fail(
+            "v10",
+            format!("naive value {actual_value} differs from retrograde value {expected_value}"),
+        );
+    }
+    if cond.kx == Cap::Inf && cond.ko == Cap::Inf {
+        let expected = match parse_reference(REFERENCE_CSV).and_then(|values| {
+            values
+                .get("classic.naive_nodes")
+                .copied()
+                .ok_or_else(|| "reference is missing classic.naive_nodes".to_owned())
+        }) {
+            Ok(value) => value as u64,
+            Err(error) => return CheckResult::fail("v10", error),
+        };
+        if result.nodes != expected {
+            return CheckResult::fail("v10", format!("classic naive node count is {}, expected {expected}", result.nodes));
+        }
+    }
+    CheckResult::pass("v10", format!("naive and retrograde values match after {} nodes", result.nodes))
+}
+
+pub fn check_v11(expected_value: i8, expected_plies: Option<u32>, optimal: Player, game: &crate::world::GameEnd) -> CheckResult {
+    let actual_value = match (optimal, game.result) {
+        (_, GameResult::Draw) => 0,
+        (Player::X, GameResult::XWin) | (Player::O, GameResult::OWin) => 1,
+        _ => -1,
+    };
+    if actual_value < expected_value {
+        return CheckResult::fail(
+            "v11",
+            format!("optimal {optimal} achieved {actual_value}, below solved value {expected_value}"),
+        );
+    }
+    if expected_value == 1 {
+        let Some(limit) = expected_plies else {
+            return CheckResult::fail("v11", "a solved win has no distance");
+        };
+        if actual_value != 1 || game.reason != EndReason::Line || game.plies > u64::from(limit) {
+            return CheckResult::fail(
+                "v11",
+                format!(
+                    "optimal {optimal} must win by ply {limit}, but result was {:?} at ply {} by {:?}",
+                    game.result, game.plies, game.reason
+                ),
+            );
+        }
+    }
+    CheckResult::pass("v11", format!("optimal {optimal} achieved at least the solved value"))
 }
 
 pub fn check_line_invariant(graph: &Graph) -> CheckResult {

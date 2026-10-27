@@ -1,13 +1,4 @@
-"""実験設定値の表示．
-
-汎用モード:
-    --results-dir <path>  既存実行の `config.json` (run) / `sweep_config.json` (sweep)
-                          を読んで整形表示する．`results/latest` シンボリックリンクも解決．
-
-Replication 専用モード（必要に応じて追加）:
-    引数なし時に `paper_experiments()` 等の論文再現実験定義を一覧表示する．
-    本テンプレートでは未実装．`reproduce_paper.py` を作成したら，
-    そこから `Experiment` / `paper_experiments()` をインポートして拡張すること．
+"""Display a run or sweep configuration.
 
 Usage:
     fifo-ttt-tools show-experiment-settings --results-dir results/latest
@@ -23,7 +14,7 @@ from pathlib import Path
 
 
 def _resolve_results_dir(arg: str) -> Path:
-    """相対パスは CWD 起点で解決し，シンボリックリンクは実体に解決する．"""
+    """Resolve relative paths from the current directory and follow symlinks."""
     p = Path(arg)
     if not p.is_absolute():
         p = Path.cwd() / arg
@@ -38,17 +29,17 @@ def _find_config_file(results_dir: Path) -> tuple[Path, str]:
     if sweep_cfg.exists():
         return sweep_cfg, "sweep"
     raise FileNotFoundError(
-        f"設定ファイルが見つかりません: {results_dir}\n"
-        f"  期待ファイル: config.json (run) / sweep_config.json (sweep)"
+        f"Configuration file not found: {results_dir}\n"
+        f"  Expected: config.json (run) or sweep_config.json (sweep)"
     )
 
 
 def render_config(cfg: dict, source: Path, kind: str) -> str:
     lines: list[str] = []
     lines.append("=" * 80)
-    lines.append(f"実行設定 ({kind})")
+    lines.append(f"Run configuration ({kind})")
     lines.append("=" * 80)
-    lines.append(f"設定ファイル: {source}")
+    lines.append(f"Source: {source}")
     lines.append("-" * 80)
     for key, value in cfg.items():
         lines.append(f"{key:<20}: {value}")
@@ -65,18 +56,18 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--results-dir", "--results_dir",
         required=True,
-        help="config.json / sweep_config.json を含む実行結果ディレクトリ",
+        help="Run directory containing config.json or sweep_config.json",
     )
     parser.add_argument(
         "--json",
         action="store_true",
-        help="表ではなく JSON 形式で出力する．",
+        help="Print JSON instead of the formatted view",
     )
     args = parser.parse_args(argv)
 
     results_dir = _resolve_results_dir(args.results_dir)
     if not results_dir.exists():
-        print(f"エラー: ディレクトリが存在しません: {results_dir}", file=sys.stderr)
+        print(f"Error: directory does not exist: {results_dir}", file=sys.stderr)
         return 1
 
     cfg_path, kind = _find_config_file(results_dir)

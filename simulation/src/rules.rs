@@ -8,73 +8,83 @@ pub enum Outcome {
 }
 
 pub fn legal_moves(state: &State, cond: &Condition) -> Vec<u8> {
+    let available = legal_move_mask(state, cond);
+    (0..9).filter(|cell| available & (1 << cell) != 0).collect()
+}
+
+fn legal_move_mask(state: &State, cond: &Condition) -> u16 {
     let mover = state.to_move();
     let mut occupied = state.cells_of(mover) | state.cells_of(mover.other());
     if cond.rule == Rule::T1 {
         if let Cap::Finite(limit) = cond.cap(mover) {
-            let queue = state.cells_in_order(mover);
-            if queue.len() == usize::from(limit) {
-                occupied &= !(1 << queue[0]);
+            if state.cell_count(mover) == usize::from(limit) {
+                let oldest = state.oldest_cell(mover).expect("a player at capacity has an oldest cell");
+                occupied &= !(1 << oldest);
             }
         }
     }
-    (0..9).filter(|cell| occupied & (1 << cell) == 0).collect()
+    !occupied & 0x1ff
 }
 
 pub fn removed_cell(state: &State, cell: u8, cond: &Condition) -> Option<u8> {
-    if !legal_moves(state, cond).contains(&cell) {
+    if cell >= 9 || legal_move_mask(state, cond) & (1 << cell) == 0 {
         return None;
     }
     let mover = state.to_move();
     let Cap::Finite(limit) = cond.cap(mover) else {
         return None;
     };
-    let queue = state.cells_in_order(mover);
-    (queue.len() == usize::from(limit)).then(|| queue[0])
+    (state.cell_count(mover) == usize::from(limit)).then(|| state.oldest_cell(mover).expect("a player at capacity has an oldest cell"))
 }
 
 pub fn step(state: &State, cell: u8, cond: &Condition) -> Result<(State, Outcome), String> {
-    if !legal_moves(state, cond).contains(&cell) {
+    if cell >= 9 || legal_move_mask(state, cond) & (1 << cell) == 0 {
         return Err(format!("cell {cell} is not a legal move"));
     }
 
     let mover = state.to_move();
     let cap = cond.cap(mover);
-    let mut cells = state.cells_in_order(mover);
+    let mut cells = [0_u8; 10];
+    let mut len = state.copy_cells(mover, &mut cells);
     let outcome = match cond.rule {
         Rule::T1 => {
-            remove_oldest_at_capacity(&mut cells, cap);
-            cells.push(cell);
-            line_outcome(&cells)
+            remove_oldest_at_capacity(&mut cells, &mut len, cap);
+            cells[len] = cell;
+            len += 1;
+            line_outcome(&cells[..len])
         }
         Rule::T2 => {
-            cells.push(cell);
-            let outcome = line_outcome(&cells);
-            remove_oldest_over_capacity(&mut cells, cap);
+            cells[len] = cell;
+            len += 1;
+            let outcome = line_outcome(&cells[..len]);
+            remove_oldest_over_capacity(&mut cells, &mut len, cap);
             outcome
         }
         Rule::T3 => {
-            cells.push(cell);
-            remove_oldest_over_capacity(&mut cells, cap);
-            line_outcome(&cells)
+            cells[len] = cell;
+            len += 1;
+            remove_oldest_over_capacity(&mut cells, &mut len, cap);
+            line_outcome(&cells[..len])
         }
     };
-    let next = state.with_cells(mover, &cells, cap).with_to_move(mover.other());
+    let next = state.with_cells(mover, &cells[..len], cap).with_to_move(mover.other());
     Ok((next, outcome))
 }
 
-fn remove_oldest_at_capacity(cells: &mut Vec<u8>, cap: Cap) {
+fn remove_oldest_at_capacity(cells: &mut [u8; 10], len: &mut usize, cap: Cap) {
     if let Cap::Finite(limit) = cap {
-        if cells.len() == usize::from(limit) {
-            cells.remove(0);
+        if *len == usize::from(limit) {
+            cells.copy_within(1..*len, 0);
+            *len -= 1;
         }
     }
 }
 
-fn remove_oldest_over_capacity(cells: &mut Vec<u8>, cap: Cap) {
+fn remove_oldest_over_capacity(cells: &mut [u8; 10], len: &mut usize, cap: Cap) {
     if let Cap::Finite(limit) = cap {
-        if cells.len() > usize::from(limit) {
-            cells.remove(0);
+        if *len > usize::from(limit) {
+            cells.copy_within(1..*len, 0);
+            *len -= 1;
         }
     }
 }

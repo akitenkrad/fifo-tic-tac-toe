@@ -71,6 +71,45 @@ impl State {
         (0..len).map(|index| ((part >> (index * 4)) & 0xf) as u8).collect()
     }
 
+    pub(crate) fn cell_count(self, player: Player) -> usize {
+        let part = self.player_part(player);
+        if part & (1 << INF_SHIFT) != 0 {
+            (part & 0x1ff).count_ones() as usize
+        } else {
+            ((part >> LEN_SHIFT) & 0x7) as usize
+        }
+    }
+
+    pub(crate) fn oldest_cell(self, player: Player) -> Option<u8> {
+        let part = self.player_part(player);
+        if part & (1 << INF_SHIFT) != 0 || self.cell_count(player) == 0 {
+            None
+        } else {
+            Some((part & 0xf) as u8)
+        }
+    }
+
+    pub(crate) fn copy_cells(self, player: Player, output: &mut [u8; 10]) -> usize {
+        let part = self.player_part(player);
+        if part & (1 << INF_SHIFT) != 0 {
+            let mask = (part & 0x1ff) as u16;
+            let mut len = 0;
+            for cell in 0..9 {
+                if mask & (1 << cell) != 0 {
+                    output[len] = cell;
+                    len += 1;
+                }
+            }
+            len
+        } else {
+            let len = ((part >> LEN_SHIFT) & 0x7) as usize;
+            for (index, slot) in output.iter_mut().take(len).enumerate() {
+                *slot = ((part >> (index * 4)) & 0xf) as u8;
+            }
+            len
+        }
+    }
+
     pub const fn uses_mask(self, player: Player) -> bool {
         let shift = match player {
             Player::X => 0,

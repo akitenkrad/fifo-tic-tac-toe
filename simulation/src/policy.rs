@@ -1,5 +1,6 @@
 use std::cmp::Ordering;
 use std::collections::{HashMap, VecDeque};
+use std::sync::Arc;
 
 use rand::Rng;
 use socsim_core::SimRng;
@@ -21,13 +22,16 @@ pub trait Policy {
     fn choose(&mut self, obs: &Observation, rng: &mut SimRng) -> u8;
 }
 
+#[derive(Clone)]
 pub struct OptimalPolicy {
-    evaluations: HashMap<u64, (i8, Option<u32>)>,
+    evaluations: Arc<HashMap<u64, (i8, Option<u32>)>>,
 }
 
 impl OptimalPolicy {
     pub fn new(evaluations: HashMap<u64, (i8, Option<u32>)>) -> Self {
-        Self { evaluations }
+        Self {
+            evaluations: Arc::new(evaluations),
+        }
     }
 
     pub fn evaluations(&self) -> &HashMap<u64, (i8, Option<u32>)> {

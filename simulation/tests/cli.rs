@@ -6,7 +6,7 @@ fn binary() -> Command {
 
 #[test]
 fn solve_and_show_surfaces_exist() {
-    for name in ["solve", "show"] {
+    for name in ["solve", "show", "all", "naive", "play"] {
         let output = binary().args([name, "--help"]).output().expect("binary should start");
         assert!(output.status.success(), "{name} --help must succeed");
         let stdout = String::from_utf8(output.stdout).expect("help must be UTF-8");
@@ -31,9 +31,19 @@ fn scratch_and_prod_are_mutually_exclusive() {
 }
 
 #[test]
-fn phase_two_subcommands_are_not_exposed() {
-    for name in ["all", "naive", "play"] {
-        let output = binary().arg(name).output().expect("binary should start");
-        assert!(!output.status.success(), "{name} must remain unimplemented");
-    }
+fn phase_two_options_are_exposed() {
+    let solve = binary().args(["solve", "--help"]).output().expect("binary should start");
+    let solve_help = String::from_utf8(solve.stdout).unwrap();
+    assert!(solve_help.contains("--first"));
+    assert!(solve_help.contains("--horizon"));
+
+    let naive = binary().args(["naive", "--help"]).output().expect("binary should start");
+    let naive_help = String::from_utf8(naive.stdout).unwrap();
+    assert!(naive_help.contains("--node-cap"));
+
+    let play = binary().args(["play", "--help"]).output().expect("binary should start");
+    let play_help = String::from_utf8(play.stdout).unwrap();
+    assert!(play_help.contains("--games"));
+    assert!(play_help.contains("--seed"));
+    assert!(play_help.contains("--max-plies"));
 }
