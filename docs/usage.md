@@ -101,7 +101,7 @@ uv run fifo-ttt-tools table --naive --scratch
 
 | Command | Output |
 |---|---|
-| `plot` | Two figure alternatives, PNG and SVG: (a) value against the common cap `k` with one line per rule, (b) 5 × 5 tables of value and distance per rule. Figure labels are in Japanese |
+| `plot` | Two figure alternatives, PNG and SVG: (a) value and decisive distance against the common cap `k`, with one line per rule, (b) a value-colored 5 × 5 table with distance for the rule selected by `--rule`. Figure labels are in Japanese |
 | `table` | Markdown and CSV tables: values and distances, horizon sensitivity, first-player swap, optimal lines |
 | `table --naive` | Adds the comparison of reachable states and naive-search nodes (only runs with the default node cap of 10^9 are used) |
 | `show-experiment-settings --results-dir DIR` | Prints the configuration of a run |
